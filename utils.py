@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 #from dataset import CIFAR100Train, CIFAR100Test
 
-def get_network(args, use_gpu=True):
+def get_network(args, use_gpu=True, device=None):
     """ return given network
     """
 
@@ -142,7 +142,7 @@ def get_network(args, use_gpu=True):
         sys.exit()
     
     if use_gpu:
-        net = net.cuda()
+        net = net.cuda(device)
 
     return net
 

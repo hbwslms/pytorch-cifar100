@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader
 #from dataset import *
 from torch.autograd import Variable
 
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 from conf import settings
 from utils import get_network, get_training_dataloader, get_test_dataloader, WarmUpLR
@@ -37,8 +37,8 @@ def train(epoch):
         images = Variable(images)
         labels = Variable(labels)
 
-        labels = labels.cuda()
-        images = images.cuda()
+        labels = labels.cuda(device)
+        images = images.cuda(device)
 
         optimizer.zero_grad()
         outputs = net(images)
@@ -81,8 +81,8 @@ def eval_training(epoch):
         images = Variable(images)
         labels = Variable(labels)
 
-        images = images.cuda()
-        labels = labels.cuda()
+        images = images.cuda(device)
+        labels = labels.cuda(device)
 
         outputs = net(images)
         loss = loss_function(outputs, labels)
@@ -114,7 +114,11 @@ if __name__ == '__main__':
     parser.add_argument('-lr', type=float, default=0.1, help='initial learning rate')
     args = parser.parse_args()
 
-    net = get_network(args, use_gpu=args.gpu)
+
+    if torch.cuda.is_available() and args.gpu:
+        device = torch.cuda.current_device()
+
+    net = get_network(args, use_gpu=args.gpu, device=device)
         
     #data preprocessing:
     cifar100_training_loader = get_training_dataloader(
@@ -138,14 +142,14 @@ if __name__ == '__main__':
     train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=settings.MILESTONES, gamma=0.2) #learning rate decay
     iter_per_epoch = len(cifar100_training_loader)
     warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
-    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, settings.TIME_NOW)
+    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net)
 
     #use tensorboard
     if not os.path.exists(settings.LOG_DIR):
         os.mkdir(settings.LOG_DIR)
     writer = SummaryWriter(log_dir=os.path.join(
-            settings.LOG_DIR, args.net, settings.TIME_NOW))
-    input_tensor = torch.Tensor(12, 3, 32, 32).cuda()
+            settings.LOG_DIR, args.net))
+    input_tensor = torch.Tensor(12, 3, 32, 32).cuda(device)
     writer.add_graph(net, Variable(input_tensor, requires_grad=True))
 
     #create checkpoint folder to save model
